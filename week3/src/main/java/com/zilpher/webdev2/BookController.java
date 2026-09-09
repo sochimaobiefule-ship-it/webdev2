@@ -3,74 +3,64 @@ package com.zilpher.webdev2;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
 
 @Controller
-@RequestMapping("/books")
+@RequestMapping("/products")
 public class BookController {
-    private final List<Book> books = new ArrayList<>();
+    private final List<Book> products = new ArrayList<>();
+    
     public BookController() {
-        books.add(new Book(1L, "Clean Code", "Robert C. Martin"));
-        books.add(new Book(2L, "Effective Java", "Joshua Bloch"));
-        books.add(new Book(3L, "The Pragmatic Programmer", "Andrew Hunt"));
+        Category tech = new Category("Technology");
+        products.add(new Book(1L, "Clean Code", 45.00, tech));
+        products.add(new Book(2L, "Effective Java", 50.00, tech));
+        products.add(new Book(3L, "The Pragmatic Programmer", 40.00, tech));
     }
 
     @GetMapping
-    @ResponseBody
-    public List<Book> getAllBooks(@RequestParam(required = false) String author) {
-        if (author != null && !author.isBlank()) {
-            return books.stream()
-                    .filter(b -> b.getAuthor().equalsIgnoreCase(author))
-                    .collect(Collectors.toList());
-        }
-        return books;
+    public String getAllProducts(Model model) {
+        model.addAttribute("products", products);
+        return "products"; 
     }
 
     @GetMapping("/{id}")
-    @ResponseBody
-    public ResponseEntity<Book> getBookById(@PathVariable Long id) {
-        Optional<Book> bookOpt = books.stream()
-                .filter(b -> b.getId().equals(id))
+    public String getProductDetailView(@PathVariable Long id, Model model) {
+        Optional<Book> productOpt = products.stream()
+                .filter(p -> p.getId().equals(id))
                 .findFirst();
 
-        return bookOpt
-                .map(book -> ResponseEntity.ok(book))
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        if (productOpt.isPresent()) {
+            model.addAttribute("product", productOpt.get());
+            return "product-detail"; 
+        }
+        return "products"; 
     }
 
-    @GetMapping("/{id}/view")
-    public String getBookDetailView(@PathVariable Long id, Model model) {
-        Optional<Book> bookOpt = books.stream()
-            .filter(b -> b.getId().equals(id))
-                .findFirst();
-
-        if (bookOpt.isPresent()) {
-            model.addAttribute("book", bookOpt.get());
-            return "book-detail";
-        }
-        return "404"; 
+    @GetMapping("/new")
+    public String showCreateForm(Model model) {
+        model.addAttribute("product", new Book());
+        return "product-form"; 
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public String createBook(@ModelAttribute Book newBook) {
-        if (newBook.getId() == null) {
-            newBook.setId((long) (books.size() + 1));
+    public String createProduct(@ModelAttribute("product") Book product, BindingResult result) {
+        if (result.hasErrors()) {
+            return "product-form"; 
         }
-        books.add(newBook);
-        return "redirect:/books";
+
+        product.setId((long) (products.size() + 1));
+        if (product.getCategory() == null) {
+            product.setCategory(new Category("General"));
+        }
+        products.add(product);
+        return "redirect:/products"; 
     }
 }

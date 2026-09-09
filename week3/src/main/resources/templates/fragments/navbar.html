@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <nav th:fragment="navbar" style="background-color: #f8f9fa; padding: 10px; margin-bottom: 20px;">
+        <a th:href="@{/products}" style="margin-right: 15px;">Product List</a>
+        <a th:href="@{/products/new}">Add Product</a>
+    </nav>
+</body>
+</html>
