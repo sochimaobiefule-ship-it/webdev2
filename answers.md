@@ -1,6 +1,9 @@
 WEBDEV2 — Week 8 Lab Answers
-Name: Declan
+
+Name: Obiefule Declan
+
 Student ID: 2510223
+
 GitHub repo: https://github.com/sochimaobiefule-ship-it/webdev2
 
 ---
