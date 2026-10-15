@@ -1,365 +1,546 @@
-WEBDEV2 — Week 8 Lab Answers
+# WEBDEV2 — Week 9 Lab Answers
 
-Name: Obiefule Declan
-
+Name: OBIEFULE DECLAN
 Student ID: 2510223
-
 GitHub repo: https://github.com/sochimaobiefule-ship-it/webdev2
+Date submitted: 15/10/2026
 
 ---
 
-## Task 1 — Create the Repository Interface
+## Task 1 — One-to-One + One-to-Many Mappings
 
-### Approach / explanation:
-I created the Pet entity and added primary key and column constraints to it. Then, I created `PetRepository` extending `JpaRepository<Pet, Long>`. Spring Data JPA automatically handles database operations so I did not need to write raw SQL.
+**Approach / explanation:**
+For the 1:1 relationship between `User` and `UserProfile`, I set `User` as the owning side using `@JoinColumn(name = "profile_id")` while `UserProfile` acts as the inverse side with `mappedBy = "profile"`. For the 1:N relationship, `Employee` owns the foreign key via `@ManyToOne` with `@JoinColumn(name = "department_id", nullable = false)` and `fetch = FetchType.LAZY`. `Department` owns the inverse side with `@OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true)`. I also implemented synchronization helper methods `addEmployee()` and `removeEmployee()` inside `Department` to keep both ends of the memory relationship aligned.
 
-### Code / query used:
-
-**Pet.java:**
+**Code / endpoint(s) used (if applicable):**
 ```java
-package com.zilpher.webdev2.model;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
-
+// Department.java
 @Entity
-@Table(name = "pet")
-public class Pet {
+@Table(name = "departments")
+public class Department {
+    @Id 
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String name;
+
+    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Employee> employees = new ArrayList<>();
+
+    public void addEmployee(Employee employee) {
+        employees.add(employee);
+        employee.setDepartment(this);
+    }
+
+    public void removeEmployee(Employee employee) {
+        employees.remove(employee);
+        employee.setDepartment(null);
+    }
+}
+
+// Employee.java
+@Entity
+@Table(name = "employees")
+public class Employee {
+
+    @Id 
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id", nullable = false)
+    private Department department;
+}
+```
+
+**Evidence (screenshot filename, request/response sample, or file reference in this folder):**
+Hibernate: 
+    create table departments (
+        id bigint not null auto_increment,
+        name varchar(255) not null,
+        primary key (id)
+    ) engine=InnoDB
+
+Hibernate: 
+    create table employees (
+        id bigint not null auto_increment,
+        name varchar(255) not null,
+        department_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+
+Hibernate: 
+    insert 
+    into
+        departments
+        (name) 
+    values
+        (?)
+
+Hibernate: 
+    insert 
+    into
+        employees
+        (department_id, name) 
+    values
+        (?, ?)
+
+Hibernate: 
+    insert 
+    into
+        employees
+        (department_id, name) 
+    values
+        (?, ?)
+
+**Reflection question:**
+_Which entity owns the `Department`–`Employee` relationship and why, and what value must `mappedBy` contain?_
+
+Your answer:
+Employee owns the relationship because it holds the physical foreign key column (department_id) in the database table. The mappedBy property in Department must be set to "department", which corresponds directly to the field name pointing back to Department inside the Employee entity class.
+
+---
+
+## Task 2 — Many-to-Many Join Table + Association Entity
+
+**Approach / explanation:**
+Instead of a basic direct `@ManyToMany` join table, I modeled the relationship using `Enrollment` as an association entity. This allows tracking additional payload attributes such as `enrollmentDate` and `grade`. `Student` and `Course` each have a `@OneToMany` relationship targeting `Enrollment`, while `Enrollment` holds `@ManyToOne` foreign keys to both. To prevent a student from enrolling twice in the exact same course, I declared a composite unique constraint `@UniqueConstraint(name = "uk_student_course", columnNames = {"student_id", "course_id"})` on the `enrollments` table.
+
+**Code / endpoint(s) used (if applicable):**
+```java
+// Enrollment.java
+@Entity
+@Table(name = "enrollments", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_student_course", columnNames = {"student_id", "course_id"})
+})
+public class Enrollment {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Microchip number is required")
-    @Pattern(regexp = "^[0-9]{15}$", message = "Microchip number must be exactly 15 digits")
-    @Column(unique = true, nullable = false)
-    private String microchipNumber;
+    private LocalDate enrollmentDate;
+    private String grade;
 
-    @NotBlank(message = "Name is required")
-    @Size(min = 2, max = 50, message = "Name must be between 2 and 50 characters")
-    @Column(nullable = false)
-    private String name;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "student_id", nullable = false)
+    private Student student;
 
-    @NotBlank(message = "Species is required")
-    @Column(nullable = false)
-    private String species;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id", nullable = false)
+    private Course course;
 
-    private String breed;
+    public Enrollment() {}
 
-    public Pet() {}
-
-    public Pet(String microchipNumber, String name, String species, String breed) {
-        this.microchipNumber = microchipNumber;
-        this.name = name;
-        this.species = species;
-        this.breed = breed;
+    public Enrollment(Student student, Course course, String grade) {
+        this.student = student;
+        this.course = course;
+        this.grade = grade;
+        this.enrollmentDate = LocalDate.now();
     }
 
     public Long getId() { 
         return id; 
-    }public String getMicrochipNumber() { 
-        return microchipNumber; 
-    }public String getName() { 
-        return name; 
-    }public String getSpecies() { 
-        return species; 
-    }public String getBreed() { 
-        return breed; 
+    }public LocalDate getEnrollmentDate() { 
+        return enrollmentDate; 
+    }public String getGrade() { 
+        return grade; 
+    }public Student getStudent() { 
+        return student; 
+    }public Course getCourse() { 
+        return course; 
     }
 
     public void setId(Long id) { 
         this.id = id; 
-    }public void setMicrochipNumber(String microchipNumber) { 
-        this.microchipNumber = microchipNumber; 
-    }public void setName(String name) { 
-        this.name = name; 
-    }public void setSpecies(String species) { 
-        this.species = species; 
-    }public void setBreed(String breed) { 
-        this.breed = breed; 
+    }public void setEnrollmentDate(LocalDate enrollmentDate) { 
+        this.enrollmentDate = enrollmentDate; 
+    }public void setGrade(String grade) { 
+        this.grade = grade; 
+    }public void setStudent(Student student) { 
+        this.student = student; 
+    }public void setCourse(Course course) { 
+        this.course = course; 
     }
 }
-PetRepository.java:
+```
 
-Java
-package com.zilpher.webdev2.repository;
+**Evidence (screenshot filename, request/response sample, or file reference in this folder):**
+Hibernate: 
+    alter table enrollments 
+       add constraint uk_student_course unique (student_id, course_id)
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-import com.zilpher.webdev2.model.Pet;
+TASK 2 TEST RUNNER START
+Hibernate: 
+    insert 
+    into
+        students
+        (name) 
+    values
+        (?)
 
-@Repository
-public interface PetRepository extends JpaRepository<Pet, Long> {
+Hibernate: 
+    insert 
+    into
+        courses
+        (title) 
+    values
+        (?)
+
+Hibernate: 
+    insert 
+    into
+        enrollments
+        (course_id, enrollment_date, grade, student_id) 
+    values
+        (?, ?, ?, ?)
+
+Hibernate: 
+    insert 
+    into
+        enrollments
+        (course_id, enrollment_date, grade, student_id) 
+    values
+        (?, ?, ?, ?)
+
+2026-10-15 ERROR org.hibernate.engine.jdbc.spi.SqlExceptionHelper : Duplicate entry '1-1' for key 'enrollments.uk_student_course'
+Caught duplicate enrollment constraint violation: could not execute statement [Duplicate entry '1-1' for key 'enrollments.uk_student_course']
+TASK 2 TEST RUNNER END
+
+**Reflection question:**
+_When must a many-to-many relationship be modeled as an association entity instead of a direct `@ManyToMany`, and what did the unique constraint protect in your test?_
+
+Your answer:
+A many-to-many relationship must be modeled as an association entity whenever the link itself needs extra payload fields beyond just the two primary/foreign keys. In my test, the unique constraint uk_student_course protected the database against duplicate relationship records, ensuring a student cannot be enrolled in the exact same course more than once.
+
+---
+
+## Task 3 — Fetch Strategies Experiment — LAZY vs EAGER
+
+**Approach / explanation:**
+I configured `@ManyToOne` on `Employee.department` with `FetchType.LAZY`. In a non-transactional service method, reading `employee.getDepartment().getName()` threw a `LazyInitializationException` because the Hibernate session was closed before accessing the lazy proxy. I compared two fixes: (a) adding `@Transactional` to keep the persistence context open, which issued 2 separate `SELECT` queries, and (b) writing a repository query with JPQL `JOIN FETCH`, which fetched both `Employee` and `Department` in a single SQL `JOIN` query.
+
+**Code / endpoint(s) used (if applicable):**
+```java
+// EmployeeRepository.java
+public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+    @Query("SELECT e FROM Employee e JOIN FETCH e.department WHERE e.id = :id")
+    Optional<Employee> findByIdWithDepartment(@Param("id") Long id);
 }
-Evidence:
-![Conceptual ERD](task1_output.png)
-
-Task 2 — Implement Full CRUD via a Service Layer
-Approach / explanation:
-I created PetService to handle business logic and PetController to expose REST endpoints. The service validates null inputs before saving to the database. I tested POST, GET, PUT, and DELETE operations using HTTP requests.
-
-Code / query used:
-PetService.java:
-
-Java
-package com.zilpher.webdev2.service;
-
-import java.util.List;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-
-import com.zilpher.webdev2.model.Pet;
-import com.zilpher.webdev2.repository.PetRepository;
 
 @Service
-public class PetService {
-    private final PetRepository petRepository;
+public class EmployeeService {
 
-    public PetService(PetRepository petRepository) {
-        this.petRepository = petRepository;
+    @Autowired
+    private EmployeeRepository employeeRepository;
+
+    public String getDepartmentNameLazyUntransactional(Long employeeId) {
+        Employee employee = employeeRepository.findById(employeeId).orElseThrow();
+        return employee.getDepartment().getName();
     }
 
-    public Pet registerPet(Pet pet) {
-        if (pet == null || pet.getMicrochipNumber() == null || pet.getMicrochipNumber().trim().isEmpty()) {
-            throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST, "Microchip number cannot be null or empty"
-            );
-        }
-        return petRepository.save(pet);
+    @Transactional
+    public String getDepartmentNameTransactional(Long employeeId) {
+        Employee employee = employeeRepository.findById(employeeId).orElseThrow();
+        return employee.getDepartment().getName();
     }
-
-    public List<Pet> getAllPets() {
-        return petRepository.findAll();
-    }
-
-    public Pet getPetById(Long id) {
-        return petRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Pet not found with ID: " + id));
-    }
-
-    public Pet updatePet(Long id, Pet updatedPet) {
-        Pet existingPet = getPetById(id);
-        existingPet.setMicrochipNumber(updatedPet.getMicrochipNumber());
-        existingPet.setName(updatedPet.getName());
-        existingPet.setSpecies(updatedPet.getSpecies());
-        existingPet.setBreed(updatedPet.getBreed());
-        return petRepository.save(existingPet);
-    }
-
-    public void removePet(Long id) {
-        Pet existingPet = getPetById(id);
-        petRepository.deleteById(existingPet.getId());
+    
+    public String getDepartmentNameFetchJoin(Long employeeId) {
+        Employee employee = employeeRepository.findByIdWithDepartment(employeeId).orElseThrow();
+        return employee.getDepartment().getName();
     }
 }
-PetController.java:
+```
 
-Java
-package com.zilpher.webdev2.controller;
+**Evidence (screenshot filename, request/response sample, or file reference in this folder):**
+TASK 3 TEST RUNNER START
+Step 1: Testing Non-Transactional Lazy Load
+Hibernate: 
+    select
+        e1_0.id,
+        e1_0.department_id,
+        e1_0.name 
+    from
+        employees e1_0 
+    where
+        e1_0.id=?
 
-import java.util.List;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-import com.zilpher.webdev2.model.Pet;
-import com.zilpher.webdev2.service.PetService;
+Caught expected LazyInitializationException: org.hibernate.LazyInitializationException - could not initialize proxy [com.zilpher.webdev2.entity.Department#3]
 
-@RestController
-@RequestMapping("/api/pets")
-public class PetController {
+Step 2: Testing @Transactional Fix
+Hibernate: 
+    select
+        e1_0.id,
+        e1_0.department_id,
+        e1_0.name 
+    from
+        employees e1_0 
+    where
+        e1_0.id=?
 
-    private final PetService petService;
+Hibernate: 
+    select
+        d1_0.id,
+        d1_0.name 
+    from
+        departments d1_0 
+    where
+        d1_0.id=?
 
-    public PetController(PetService petService) {
-        this.petService = petService;
-    }
+Department name retrieved via @Transactional: Research & Development
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public Pet registerPet(@RequestBody Pet pet) {
-        return petService.registerPet(pet);
-    }
+Step 3: Testing JOIN FETCH Fix
+Hibernate: 
+    select
+        e1_0.id,
+        e1_0.department_id,
+        d1_0.id,
+        d1_0.name,
+        e1_0.name 
+    from
+        employees e1_0 
+    join
+        departments d1_0 
+            on d1_0.id=e1_0.department_id 
+    where
+        e1_0.id=?
+Department name retrieved via JOIN FETCH: Research & Development
+TASK 3 TEST RUNNER END
 
-    @GetMapping
-    public List<Pet> getAllPets() {
-        return petService.getAllPets();
-    }
+**Reflection question:**
+_What causes `LazyInitializationException`, and why is prefer-LAZY plus explicit fetch join/`@EntityGraph` preferable to marking everything EAGER?_
 
-    @GetMapping("/{id}")
-    public Pet getPetById(@PathVariable Long id) {
-        return petService.getPetById(id);
-    }
+Your answer:
+LazyInitializationException is thrown when application code attempts to access an uninitialized lazy proxy after the underlying JPA session has already closed. Using FetchType.LAZY by default alongside explicit JOIN FETCH or @EntityGraph is preferred because it allows developers to customize SQL queries on a per-use-case basis, preventing unwanted table joins and memory bloat while avoiding the N+1 select problem.
 
-    @PutMapping("/{id}")
-    public Pet updatePet(@PathVariable Long id, @RequestBody Pet pet) {
-        return petService.updatePet(id, pet);
-    }
+---
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletePet(@PathVariable Long id) {
-        petService.removePet(id);
-    }
-}
-Evidence:
-![Conceptual ERD](task2_output.png)
+## Task 4 — Cascade + orphanRemoval — Safe vs. Dangerous
 
-Task 3 — Write Derived & Custom Query Methods
-Approach / explanation:
-I added query methods in PetRepository to search pets by species, search pets by name, and list unique species. I then added matching service methods and GET endpoints in PetController.
+**Approach / explanation:**
+For the parent-child relationship, I configured `cascade = {CascadeType.PERSIST, CascadeType.MERGE}` and `orphanRemoval = true`. When an employee is removed from the department's list, Hibernate automatically issues a SQL `DELETE` query to purge the orphan row from the database. For shared references, I strictly avoided `CascadeType.REMOVE` and `orphanRemoval = true` to guarantee that deleting a student record does not accidentally delete shared courses that other students may be enrolled in.
 
-Code / query used:
-PetRepository.java methods:
+**Code / endpoint(s) used (if applicable):**
+```java
+// Department.java
+@OneToMany(mappedBy = "department", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+private List<Employee> employees = new ArrayList<>();
 
-Java
-List<Pet> findBySpeciesIgnoreCase(String species);
+// Student.java
+@OneToMany(mappedBy = "student", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+private List<Enrollment> enrollments = new ArrayList<>();
+```
 
-List<Pet> findByNameContainingIgnoreCase(String name);
+**Evidence (screenshot filename, request/response sample, or file reference in this folder):**
+TASK 4 TEST RUNNER START
+Step 1: Testing orphanRemoval on Department -> Employee
+Hibernate: 
+    insert 
+    into
+        departments
+        (name) 
+    values
+        (?)
 
-@Query("SELECT DISTINCT p.species FROM Pet p")
-List<String> findDistinctSpecies();
-PetService.java methods:
+Hibernate: 
+    insert 
+    into
+        employees
+        (department_id, name) 
+    values
+        (?, ?)
 
-Java
-public List<Pet> getPetsBySpecies(String species) {
-    return petRepository.findBySpeciesIgnoreCase(species);
-}
+Hibernate: 
+    insert 
+    into
+        employees
+        (department_id, name) 
+    values
+        (?, ?)
 
-public List<Pet> searchPetsByName(String name) {
-    return petRepository.findByNameContainingIgnoreCase(name);
-}
+Hibernate: 
+    delete 
+    from
+        employees 
+    where
+        id=?
 
-public List<String> getAllDistinctSpecies() {
-    return petRepository.findDistinctSpecies();
-}
-PetController.java endpoints:
+Employee removed from collection and orphan deleted successfully
 
-Java
-@GetMapping("/species")
-public List<Pet> getPetsBySpecies(@RequestParam String name) {
-    return petService.getPetsBySpecies(name);
-}
+Step 2: Testing Deleting Student without Deleting Shared Course
+Hibernate: 
+    insert 
+    into
+        courses
+        (title) 
+    values
+        (?)
 
-@GetMapping("/search")
-public List<Pet> searchPetsByName(@RequestParam String keyword) {
-    return petService.searchPetsByName(keyword);
-}
+Hibernate: 
+    insert 
+    into
+        students
+        (name) 
+    values
+        (?)
 
-@GetMapping("/species-list")
-public List<String> getAllDistinctSpecies() {
-    return petService.getAllDistinctSpecies();
-}
-Evidence:
-![Conceptual ERD](task3_output.png)
+Hibernate: 
+    delete 
+    from
+        students 
+    where
+        id=?
 
-Task 4 — Apply @Transactional and Observe Rollback
-Approach / explanation:
-I added @Transactional to batchRegister in PetService. This ensures that if any item in a batch import fails, all previous saves in that transaction are cancelled and rolled back.
+Hibernate: 
+    select
+        count(*) 
+    from
+        courses c1_0 
+    where
+        c1_0.id=?
 
-Code / query used:
-PetService.java batch method:
+Student deleted. Does shared Course still exist in DB? true
+TASK 4 TEST RUNNER END
 
-Java
-@Transactional
-public void batchRegister(List<Pet> pets) {
-    for (Pet p : pets) {
-        petRepository.save(p);
-    }
-}
-PetController.java batch endpoint:
+**Reflection question:**
+_What is the difference between `CascadeType.REMOVE` and `orphanRemoval = true`, and in which situation is each appropriate or dangerous?_
 
-Java
-@PostMapping("/batch")
-@ResponseStatus(HttpStatus.CREATED)
-public void batchRegister(@RequestBody List<Pet> pets) {
-    petService.batchRegister(pets);
-}
-Evidence:
-![Conceptual ERD](task4_output.png)
+Your answer:
+CascadeType.REMOVE triggers a cascading delete when the parent entity itself is deleted. orphanRemoval = true goes further by deleting a child entity if it is disassociated/removed from the parent's collection, even if the parent entity remains alive in the database. orphanRemoval is appropriate for private, parent-child relationships, but dangerous on shared lookup entities, where disassociating or deleting one side should never wipe out shared system records.
 
-Observation:
-I sent a batch request where the second pet had a duplicate microchip number. The request failed with an exception. I checked MySQL, and the first pet was not saved because the transaction rolled back.
+---
 
-Task 5 — Debug a Persistence Error
-Approach / explanation:
-I reproduced the persistence failure by invoking save() on an uninitialized Pet object using reproduceTask5Error(repository); in DataInitializer.java. I extracted the root cause from the terminal output logs, documented the stack trace, and verified the successful fix.
+## Task 5 — Capstone Milestone 2 — ERD to JPA Entity Model
 
-Debugging Write-up:
-Primary Exception Type: jakarta.validation.ConstraintViolationException
+**Approach / explanation:**
+I translated my Capstone domain into JPA entity classes, mapping the cardinalities, foreign key columns, and owning sides. The domain includes a 1:1 relationship, a 1:N relationship, and an N:M relationship resolved via the `OrderItem` association entity between `CustomerOrder` and `Product`. All relationships default to `FetchType.LAZY` to ensure optimal performance, and cascade types are configured based on entity lifecycle dependencies.
 
-Root Cause Analysis: Hibernate triggers BeanValidationEventListener at the preInsert phase prior to generating or executing SQL INSERT statements in MySQL. Because the Pet entity utilizes Jakarta Bean Validation annotations (@NotBlank on microchipNumber, name, and species), saving an empty entity (new Pet()) fails bean validation in memory. The engine reported three specific constraint violations:
-
-Species is required (property species)
-
-Microchip number is required (property microchipNumber)
-
-Name is required (property name)
-
-SQL Log Confirmation: Validation failed client-side before reaching the database level. As a result, Hibernate aborted transaction processing and no SQL INSERT statements were executed.
-
-Applied Fixes: I ensured @GeneratedValue(strategy = GenerationType.IDENTITY) was properly applied to the entity ID, instantiated complete Pet objects containing all required properties before invoking persistence methods, and commented out the failure reproduction line in DataInitializer.java.
-
-Stack Trace Snippet:
-Plaintext
-jakarta.validation.ConstraintViolationException: Validation failed for classes [com.zilpher.webdev2.model.Pet] during persist time for groups [jakarta.validation.groups.Default, ]
-List of constraint violations:[
-	ConstraintViolationImpl{interpolatedMessage='Species is required', propertyPath=species, rootBeanClass=class com.zilpher.webdev2.model.Pet, messageTemplate='Species is required'}
-	ConstraintViolationImpl{interpolatedMessage='Microchip number is required', propertyPath=microchipNumber, rootBeanClass=class com.zilpher.webdev2.model.Pet, messageTemplate='Microchip number is required'}
-	ConstraintViolationImpl{interpolatedMessage='Name is required', propertyPath=name, rootBeanClass=class com.zilpher.webdev2.model.Pet, messageTemplate='Name is required'}
-]
-	at org.hibernate.boot.beanvalidation.BeanValidationEventListener.validate(BeanValidationEventListener.java:151) ~[hibernate-core-6.4.4.Final.jar:6.4.4.Final]
-	at org.hibernate.boot.beanvalidation.BeanValidationEventListener.onPreInsert(BeanValidationEventListener.java:81) ~[hibernate-core-6.4.4.Final.jar:6.4.4.Final]
-	at com.zilpher.webdev2.config.DataInitializer.reproduceTask5Error(DataInitializer.java:37) ~[classes/:na]
-Verified Application Startup Output:
-Plaintext
---> Smoke Test - Found 4 pets in database:
-    [ID: 1] Buddy (Dog, Golden Retriever) - Chip: 985141000123456
-    [ID: 2] Milo (Cat, Siamese) - Chip: 985141000654321
-    [ID: 3] Luna (Dog, Poodle) - Chip: 985141000999888
-    [ID: 8] Max (Dog, German Shepherd) - Chip: 985141000111222
-Code / query used:
-Fixed Pet.java entity:
-
-Java
+**Code / endpoint(s) used (if applicable):**
+```java
+// CustomerOrder.java
 @Entity
-@Table(name = "pet")
-public class Pet {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+@Table(name = "customer_orders")
+public class CustomerOrder {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    private LocalDate orderDate;
+    private String status;
 
-    @NotBlank(message = "Microchip number is required")
-    @Pattern(regexp = "^[0-9]{15}$", message = "Microchip number must be exactly 15 digits")
-    @Column(unique = true, nullable = false)
-    private String microchipNumber;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 
-    @NotBlank(message = "Name is required")
-    @Size(min = 2, max = 50, message = "Name must be between 2 and 50 characters")
-    @Column(nullable = false)
-    private String name;
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> orderItems = new ArrayList<>();
 
-    @NotBlank(message = "Species is required")
-    @Column(nullable = false)
-    private String species;
-
-    private String breed;
+    public void addOrderItem(OrderItem item) {
+        orderItems.add(item);
+        item.setOrder(this);
+    }
 }
-Evidence:
-![Conceptual ERD](task5_outputs)
 
-Self-Check
-[] All tasks committed with individual, meaningful commit messages
+// OrderItem.java
+@Entity
+@Table(name = "order_items")
+public class OrderItem {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private Integer quantity;
+    private Double price;
 
-[] All code on week8 branch
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    private CustomerOrder order;
 
-[] This file completed and named answers.md
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
+}
+```
 
-[] Repository link pasted into Moodle (no files uploaded)
+**Evidence (screenshot filename, request/response sample, or file reference in this folder):**
+Hibernate: 
+    create table customer_orders (
+        id bigint not null auto_increment,
+        order_date date,
+        status varchar(255),
+        user_id bigint,
+        primary key (id)
+    ) engine=InnoDB
+
+Hibernate: 
+    create table order_items (
+        id bigint not null auto_increment,
+        price float(53),
+        quantity integer,
+        order_id bigint not null,
+        product_id bigint not null,
+        primary key (id)
+    ) engine=InnoDB
+
+Hibernate: 
+    create table products (
+        id bigint not null auto_increment,
+        name varchar(255) not null,
+        price float(53),
+        primary key (id)
+    ) engine=InnoDB
+
+TASK 5 CAPSTONE SMOKE TEST START
+Hibernate: 
+    insert 
+    into
+        user_profiles
+        (bio, phone_number) 
+    values
+        (?, ?)
+
+Hibernate: 
+    insert 
+    into
+        users
+        (profile_id, username) 
+    values
+        (?, ?)
+
+Hibernate: 
+    insert 
+    into
+        products
+        (name, price) 
+    values
+        (?, ?)
+
+Hibernate: 
+    insert 
+    into
+        customer_orders
+        (order_date, status, user_id) 
+    values
+        (?, ?, ?)
+
+Hibernate: 
+    insert 
+    into
+        order_items
+        (order_id, price, product_id, quantity) 
+    values
+        (?, ?, ?, ?)    
+Capstone object graph persisted and read back successfully
+TASK 5 CAPSTONE SMOKE TEST END                    
+
+**Reflection question:**
+_For one relationship in your capstone model, state the cardinality, the owning side, where the FK/join table lives, and why you chose that fetch and cascade setting._
+
+Your answer:
+In the CustomerOrder -> OrderItem relationship, OrderItem is the owning side because it holds the order_id foreign key column in the order_items table. I selected FetchType.LAZY to prevent loading all order line items whenever basic order summary details are queried. I chose cascade = CascadeType.ALL and orphanRemoval = true because line items are privately owned components of a customer order—they should be created, updated, or removed automatically in tandem with their parent order.
+
+---
+
+## Self-Check
+
+- [ ] All Week 9 work on the `week9` branch (project at branch root, no `week9/` folder)
+- [ ] This file completed and renamed `answers.md`
+- [ ] Repository link pasted into Moodle (no files uploaded)
