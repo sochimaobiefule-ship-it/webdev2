@@ -1,4 +1,4 @@
-# WEBDEV2 — Week 9 Lab Answers
+# WEBDEV2 — Week 10 Lab Answers
 
 Name: OBIEFULE DECLAN
 Student ID: 2510223
@@ -307,6 +307,6 @@ Invoke-WebRequest : The remote server returned an error: (409) Conflict.
 
 ## Self-Check
 
-- [ ] All Week 9 work on the `week9` branch (project at branch root, no `week9/` folder)
+- [ ] All Week 10 work on the `week10` branch (project at branch root, no `week10/` folder)
 - [ ] This file completed and renamed `answers.md`
 - [ ] Repository link pasted into Moodle (no files uploaded)
