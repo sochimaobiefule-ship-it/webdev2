@@ -2,14 +2,13 @@ package com.zilpher.webdev2;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.zilpher.webdev2.entity.Department;
 import com.zilpher.webdev2.entity.Employee;
 import com.zilpher.webdev2.repository.DepartmentRepository;
 
-@Component
+// @Component
 public class Task1TestRunner implements CommandLineRunner {
 
     @Autowired

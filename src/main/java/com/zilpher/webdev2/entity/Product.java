@@ -1,5 +1,7 @@
 package com.zilpher.webdev2.entity;
 
+import java.math.BigDecimal;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -10,7 +12,6 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "products")
 public class Product {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -18,28 +19,47 @@ public class Product {
     @Column(nullable = false)
     private String name;
 
-    private Double price;
+    @Column(unique = true)
+    private String sku;
+
+    private BigDecimal price;
+    private Integer stockQuantity;
 
     public Product() {}
 
     public Product(String name, Double price) {
         this.name = name;
+        this.price = (price != null) ? BigDecimal.valueOf(price) : null;
+    }    
+
+    public Product(String name, String sku, BigDecimal price, Integer stockQuantity) {
+        this.name = name;
+        this.sku = sku;
         this.price = price;
+        this.stockQuantity = stockQuantity;
     }
 
     public Long getId() { 
         return id; 
     }public String getName() { 
         return name; 
-    }public Double getPrice() { 
+    }public String getSku() {
+        return sku;
+    }public BigDecimal getPrice() { 
         return price; 
+    }public Integer getStockQuantity() {
+        return stockQuantity;
     }
 
     public void setId(Long id) { 
         this.id = id; 
     }public void setName(String name) { 
         this.name = name; 
-    }public void setPrice(Double price) { 
+    }public void setSku(String sku) {
+        this.sku = sku;
+    }public void setPrice(BigDecimal price) { 
         this.price = price; 
+    }public void setStockQuantity(Integer stockQuantity) {
+        this.stockQuantity = stockQuantity;
     }
 }

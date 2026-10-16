@@ -4,7 +4,6 @@ import java.time.LocalDate;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.zilpher.webdev2.entity.CustomerOrder;
@@ -16,7 +15,7 @@ import com.zilpher.webdev2.repository.CustomerOrderRepository;
 import com.zilpher.webdev2.repository.ProductRepository;
 import com.zilpher.webdev2.repository.UserRepository;
 
-@Component
+// @Component
 public class Task5SmokeTestRunner implements CommandLineRunner {
 
     @Autowired private UserRepository userRepository;

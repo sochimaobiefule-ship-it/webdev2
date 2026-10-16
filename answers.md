@@ -3,539 +3,305 @@
 Name: OBIEFULE DECLAN
 Student ID: 2510223
 GitHub repo: https://github.com/sochimaobiefule-ship-it/webdev2
-Date submitted: 15/10/2026
+Date submitted: 16/10/2026
 
 ---
 
-## Task 1 — One-to-One + One-to-Many Mappings
+## Task 1 — URL Design & Controller Skeleton
 
 **Approach / explanation:**
-For the 1:1 relationship between `User` and `UserProfile`, I set `User` as the owning side using `@JoinColumn(name = "profile_id")` while `UserProfile` acts as the inverse side with `mappedBy = "profile"`. For the 1:N relationship, `Employee` owns the foreign key via `@ManyToOne` with `@JoinColumn(name = "department_id", nullable = false)` and `fetch = FetchType.LAZY`. `Department` owns the inverse side with `@OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true)`. I also implemented synchronization helper methods `addEmployee()` and `removeEmployee()` inside `Department` to keep both ends of the memory relationship aligned.
+I designed the 6 standard RESTful API endpoints using standard plural noun conventions and appropriate HTTP verbs. I then implemented a `@RestController` skeleton class annotated with `@RequestMapping("/api/products")` containing stubbed handler methods returning `null` to ensure compilation and map mapping routes correctly.
 
-**Code / endpoint(s) used (if applicable):**
+**Endpoint Table:**
+
+| Method | Endpoint Path | Action Description | Expected Status Code |
+| :--- | :--- | :--- | :--- |
+| **GET** | `/api/products` | Retrieve all products | `200 OK` |
+| **GET** | `/api/products/{id}` | Retrieve single product by ID | `200 OK` / `404 Not Found` |
+| **POST** | `/api/products` | Create a new product | `201 Created` / `409 Conflict` |
+| **PUT** | `/api/products/{id}` | Full replacement of existing product | `200 OK` / `404 Not Found` |
+| **PATCH** | `/api/products/{id}` | Partial update of existing product | `200 OK` / `404 Not Found` |
+| **DELETE** | `/api/products/{id}` | Remove product by ID | `204 No Content` / `404 Not Found` |
+
+**Code snippet (Controller Skeleton):**
 ```java
-// Department.java
-@Entity
-@Table(name = "departments")
-public class Department {
-    @Id 
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    private String name;
-
-    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Employee> employees = new ArrayList<>();
-
-    public void addEmployee(Employee employee) {
-        employees.add(employee);
-        employee.setDepartment(this);
+@RestController
+@RequestMapping("/api/products")
+public class ProductController {
+    @GetMapping
+    public ResponseEntity<List<ProductResponseDTO>> getAll() {
+        return null;
     }
 
-    public void removeEmployee(Employee employee) {
-        employees.remove(employee);
-        employee.setDepartment(null);
-    }
-}
-
-// Employee.java
-@Entity
-@Table(name = "employees")
-public class Employee {
-
-    @Id 
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false)
-    private String name;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id", nullable = false)
-    private Department department;
-}
-```
-
-**Evidence (screenshot filename, request/response sample, or file reference in this folder):**
-Hibernate: 
-    create table departments (
-        id bigint not null auto_increment,
-        name varchar(255) not null,
-        primary key (id)
-    ) engine=InnoDB
-
-Hibernate: 
-    create table employees (
-        id bigint not null auto_increment,
-        name varchar(255) not null,
-        department_id bigint not null,
-        primary key (id)
-    ) engine=InnoDB
-
-Hibernate: 
-    insert 
-    into
-        departments
-        (name) 
-    values
-        (?)
-
-Hibernate: 
-    insert 
-    into
-        employees
-        (department_id, name) 
-    values
-        (?, ?)
-
-Hibernate: 
-    insert 
-    into
-        employees
-        (department_id, name) 
-    values
-        (?, ?)
-
-**Reflection question:**
-_Which entity owns the `Department`–`Employee` relationship and why, and what value must `mappedBy` contain?_
-
-Your answer:
-Employee owns the relationship because it holds the physical foreign key column (department_id) in the database table. The mappedBy property in Department must be set to "department", which corresponds directly to the field name pointing back to Department inside the Employee entity class.
-
----
-
-## Task 2 — Many-to-Many Join Table + Association Entity
-
-**Approach / explanation:**
-Instead of a basic direct `@ManyToMany` join table, I modeled the relationship using `Enrollment` as an association entity. This allows tracking additional payload attributes such as `enrollmentDate` and `grade`. `Student` and `Course` each have a `@OneToMany` relationship targeting `Enrollment`, while `Enrollment` holds `@ManyToOne` foreign keys to both. To prevent a student from enrolling twice in the exact same course, I declared a composite unique constraint `@UniqueConstraint(name = "uk_student_course", columnNames = {"student_id", "course_id"})` on the `enrollments` table.
-
-**Code / endpoint(s) used (if applicable):**
-```java
-// Enrollment.java
-@Entity
-@Table(name = "enrollments", uniqueConstraints = {
-    @UniqueConstraint(name = "uk_student_course", columnNames = {"student_id", "course_id"})
-})
-public class Enrollment {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private LocalDate enrollmentDate;
-    private String grade;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_id", nullable = false)
-    private Student student;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id", nullable = false)
-    private Course course;
-
-    public Enrollment() {}
-
-    public Enrollment(Student student, Course course, String grade) {
-        this.student = student;
-        this.course = course;
-        this.grade = grade;
-        this.enrollmentDate = LocalDate.now();
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductResponseDTO> getById(@PathVariable Long id) {
+        return null;
     }
 
-    public Long getId() { 
-        return id; 
-    }public LocalDate getEnrollmentDate() { 
-        return enrollmentDate; 
-    }public String getGrade() { 
-        return grade; 
-    }public Student getStudent() { 
-        return student; 
-    }public Course getCourse() { 
-        return course; 
+    @PostMapping
+    public ResponseEntity<ProductResponseDTO> create(@RequestBody CreateProductRequest request) {
+        return null;
     }
 
-    public void setId(Long id) { 
-        this.id = id; 
-    }public void setEnrollmentDate(LocalDate enrollmentDate) { 
-        this.enrollmentDate = enrollmentDate; 
-    }public void setGrade(String grade) { 
-        this.grade = grade; 
-    }public void setStudent(Student student) { 
-        this.student = student; 
-    }public void setCourse(Course course) { 
-        this.course = course; 
+    @PutMapping("/{id}")
+    public ResponseEntity<ProductResponseDTO> updateFull(@PathVariable Long id, @RequestBody UpdateProductRequest request) {
+        return null;
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<ProductResponseDTO> updatePartial(@PathVariable Long id, @RequestBody UpdateProductRequest request) {
+        return null;
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        return null;
     }
 }
 ```
 
 **Evidence (screenshot filename, request/response sample, or file reference in this folder):**
-Hibernate: 
-    alter table enrollments 
-       add constraint uk_student_course unique (student_id, course_id)
-
-TASK 2 TEST RUNNER START
-Hibernate: 
-    insert 
-    into
-        students
-        (name) 
-    values
-        (?)
-
-Hibernate: 
-    insert 
-    into
-        courses
-        (title) 
-    values
-        (?)
-
-Hibernate: 
-    insert 
-    into
-        enrollments
-        (course_id, enrollment_date, grade, student_id) 
-    values
-        (?, ?, ?, ?)
-
-Hibernate: 
-    insert 
-    into
-        enrollments
-        (course_id, enrollment_date, grade, student_id) 
-    values
-        (?, ?, ?, ?)
-
-2026-10-15 ERROR org.hibernate.engine.jdbc.spi.SqlExceptionHelper : Duplicate entry '1-1' for key 'enrollments.uk_student_course'
-Caught duplicate enrollment constraint violation: could not execute statement [Duplicate entry '1-1' for key 'enrollments.uk_student_course']
-TASK 2 TEST RUNNER END
-
-**Reflection question:**
-_When must a many-to-many relationship be modeled as an association entity instead of a direct `@ManyToMany`, and what did the unique constraint protect in your test?_
-
-Your answer:
-A many-to-many relationship must be modeled as an association entity whenever the link itself needs extra payload fields beyond just the two primary/foreign keys. In my test, the unique constraint uk_student_course protected the database against duplicate relationship records, ensuring a student cannot be enrolled in the exact same course more than once.
+StatusCode        : 200
+StatusDescription : OK
+Content           : {}
+RawContent        : HTTP/1.1 200 
+                    Keep-Alive: timeout=60
+                    Connection: keep-alive
+                    Content-Length: 0
+                    Date: Fri, 16 Oct 2026 02:57:55 GMT
 
 ---
 
-## Task 3 — Fetch Strategies Experiment — LAZY vs EAGER
+## Task 2 — GET Endpoints — List & Get by ID
 
 **Approach / explanation:**
-I configured `@ManyToOne` on `Employee.department` with `FetchType.LAZY`. In a non-transactional service method, reading `employee.getDepartment().getName()` threw a `LazyInitializationException` because the Hibernate session was closed before accessing the lazy proxy. I compared two fixes: (a) adding `@Transactional` to keep the persistence context open, which issued 2 separate `SELECT` queries, and (b) writing a repository query with JPQL `JOIN FETCH`, which fetched both `Employee` and `Department` in a single SQL `JOIN` query.
+I created `ProductResponseDTO` to encapsulate response data and prevent leaking internal entity models to API consumers. In `ProductService`, the `toDTO()` method maps entity properties to the DTO structure. The controller methods invoke the service layer and use `ResponseEntity.ok()` for collections and `Optional.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build())` for single lookup by ID.
 
-**Code / endpoint(s) used (if applicable):**
+**Code snippet (Service & Controller GET Implementation):**
 ```java
-// EmployeeRepository.java
-public interface EmployeeRepository extends JpaRepository<Employee, Long> {
-    @Query("SELECT e FROM Employee e JOIN FETCH e.department WHERE e.id = :id")
-    Optional<Employee> findByIdWithDepartment(@Param("id") Long id);
+// ProductService.java
+public List<ProductResponseDTO> findAll() {
+    return productRepository.findAll()
+            .stream()
+            .map(this::toDTO)
+            .collect(Collectors.toList());
 }
 
-@Service
-public class EmployeeService {
+public Optional<ProductResponseDTO> findById(Long id) {
+    return productRepository.findById(id).map(this::toDTO);
+}
 
-    @Autowired
-    private EmployeeRepository employeeRepository;
+public ProductResponseDTO toDTO(Product entity) {
+    return new ProductResponseDTO(
+            entity.getId(),
+            entity.getName(),
+            entity.getSku(),
+            entity.getPrice(),
+            entity.getStockQuantity()
+    );
+}
 
-    public String getDepartmentNameLazyUntransactional(Long employeeId) {
-        Employee employee = employeeRepository.findById(employeeId).orElseThrow();
-        return employee.getDepartment().getName();
+// ProductController.java
+@GetMapping
+public ResponseEntity<List<ProductResponseDTO>> getAll() {
+    return ResponseEntity.ok(productService.findAll());
+}
+
+@GetMapping("/{id}")
+public ResponseEntity<ProductResponseDTO> getById(@PathVariable Long id) {
+    return productService.findById(id)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+}
+```
+
+**Evidence (screenshot filename, request/response sample, or file reference in this folder):**
+GET /api/products returning 200 OK with DTO array:
+StatusCode: 200                                                                                                                
+StatusDescription : OK                                                                                                                   
+Content : [{"id":1,"name":"Laptop","sku":null,"price":1200.00,"stockQuantity":null}]
+
+GET /api/products/999 returning 404 Not Found for invalid ID:
+Invoke-WebRequest : The remote server returned an error: (404) Not Found.
+
+---
+
+## Task 3 — POST Endpoint — Create with 201 + Location
+
+**Approach / explanation:**
+I implemented `POST /api/products` using `CreateProductRequest` as the request body payload to encapsulate input data. In `ProductService`, the service checks whether the provided SKU already exists to prevent duplicates before mapping the request properties to a new `Product` entity and saving it via `productRepository`. In `ProductController`, I utilized `ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(created.getId()).toUri()` to dynamically generate the `Location` header URI pointing to the newly created product resource, returning HTTP status `201 Created` alongside the response DTO.
+
+**Code snippet (Service & Controller POST Implementation):**
+```java
+// ProductService.java
+public ProductResponseDTO create(CreateProductRequest request) {
+    if (productRepository.existsBySku(request.getSku())) {
+        throw new IllegalArgumentException("SKU_EXISTS");
     }
+    Product entity = new Product();
+    entity.setName(request.getName());
+    entity.setSku(request.getSku());
+    entity.setPrice(request.getPrice());
+    entity.setStockQuantity(request.getStockQuantity());
 
-    @Transactional
-    public String getDepartmentNameTransactional(Long employeeId) {
-        Employee employee = employeeRepository.findById(employeeId).orElseThrow();
-        return employee.getDepartment().getName();
-    }
-    
-    public String getDepartmentNameFetchJoin(Long employeeId) {
-        Employee employee = employeeRepository.findByIdWithDepartment(employeeId).orElseThrow();
-        return employee.getDepartment().getName();
+    Product saved = productRepository.save(entity);
+    return toDTO(saved);
+}
+
+// ProductController.java
+@PostMapping
+public ResponseEntity<?> create(@RequestBody CreateProductRequest request) {
+    try {
+        ProductResponseDTO created = productService.create(request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    } catch (IllegalArgumentException e) {
+        if ("SKU_EXISTS".equals(e.getMessage())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Product with SKU '" + request.getSku() + "' already exists.");
+        }
+        return ResponseEntity.badRequest().build();
     }
 }
 ```
 
 **Evidence (screenshot filename, request/response sample, or file reference in this folder):**
-TASK 3 TEST RUNNER START
-Step 1: Testing Non-Transactional Lazy Load
-Hibernate: 
-    select
-        e1_0.id,
-        e1_0.department_id,
-        e1_0.name 
-    from
-        employees e1_0 
-    where
-        e1_0.id=?
-
-Caught expected LazyInitializationException: org.hibernate.LazyInitializationException - could not initialize proxy [com.zilpher.webdev2.entity.Department#3]
-
-Step 2: Testing @Transactional Fix
-Hibernate: 
-    select
-        e1_0.id,
-        e1_0.department_id,
-        e1_0.name 
-    from
-        employees e1_0 
-    where
-        e1_0.id=?
-
-Hibernate: 
-    select
-        d1_0.id,
-        d1_0.name 
-    from
-        departments d1_0 
-    where
-        d1_0.id=?
-
-Department name retrieved via @Transactional: Research & Development
-
-Step 3: Testing JOIN FETCH Fix
-Hibernate: 
-    select
-        e1_0.id,
-        e1_0.department_id,
-        d1_0.id,
-        d1_0.name,
-        e1_0.name 
-    from
-        employees e1_0 
-    join
-        departments d1_0 
-            on d1_0.id=e1_0.department_id 
-    where
-        e1_0.id=?
-Department name retrieved via JOIN FETCH: Research & Development
-TASK 3 TEST RUNNER END
-
-**Reflection question:**
-_What causes `LazyInitializationException`, and why is prefer-LAZY plus explicit fetch join/`@EntityGraph` preferable to marking everything EAGER?_
-
-Your answer:
-LazyInitializationException is thrown when application code attempts to access an uninitialized lazy proxy after the underlying JPA session has already closed. Using FetchType.LAZY by default alongside explicit JOIN FETCH or @EntityGraph is preferred because it allows developers to customize SQL queries on a per-use-case basis, preventing unwanted table joins and memory bloat while avoiding the N+1 select problem.
+StatusCode : 201                                                                                                                
+StatusDescription :   Created                                                                                                                   
+Content : {"id":2,"name":"Mouse","sku":"M-01","price":19.99,"stockQuantity":10}
+RawContent : HTTP/1.1 201 
+            Transfer-Encoding: chunked
+            Keep-Alive: timeout=60
+            Connection: keep-alive
+            Content-Type: application/json
 
 ---
 
-## Task 4 — Cascade + orphanRemoval — Safe vs. Dangerous
+## Task 4 — PUT, PATCH, and DELETE Handlers
 
 **Approach / explanation:**
-For the parent-child relationship, I configured `cascade = {CascadeType.PERSIST, CascadeType.MERGE}` and `orphanRemoval = true`. When an employee is removed from the department's list, Hibernate automatically issues a SQL `DELETE` query to purge the orphan row from the database. For shared references, I strictly avoided `CascadeType.REMOVE` and `orphanRemoval = true` to guarantee that deleting a student record does not accidentally delete shared courses that other students may be enrolled in.
+I implemented full update, partial update, and deletion on the `/api/products/{id}` resource endpoint:
+- **PUT**: Replaces all entity fields with values from `UpdateProductRequest`. If the product exists, it updates and returns `200 OK`; otherwise, it returns `404 Not Found`.
+- **PATCH**: Checks fields in `UpdateProductRequest` individually for non-null values and mutates only those fields, leaving all unmentioned properties intact. It returns `200 OK` with the updated resource or `404 Not Found`.
+- **DELETE**: Verifies entity existence via `existsById`. If found, it removes the record using `deleteById` and returns `204 No Content`. If the ID does not exist, it returns `404 Not Found`.
 
-**Code / endpoint(s) used (if applicable):**
+**Code snippet (Service & Controller Implementation):**
 ```java
-// Department.java
-@OneToMany(mappedBy = "department", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
-private List<Employee> employees = new ArrayList<>();
+// ProductService.java
+public Optional<ProductResponseDTO> updateFull(Long id, UpdateProductRequest request) {
+    return productRepository.findById(id).map(existing -> {
+        existing.setName(request.getName());
+        existing.setSku(request.getSku());
+        existing.setPrice(request.getPrice());
+        existing.setStockQuantity(request.getStockQuantity());
+        Product updated = productRepository.save(existing);
+        return toDTO(updated);
+    });
+}
 
-// Student.java
-@OneToMany(mappedBy = "student", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-private List<Enrollment> enrollments = new ArrayList<>();
+public Optional<ProductResponseDTO> updatePartial(Long id, UpdateProductRequest request) {
+    return productRepository.findById(id).map(existing -> {
+        if (request.getName() != null) existing.setName(request.getName());
+        if (request.getSku() != null) existing.setSku(request.getSku());
+        if (request.getPrice() != null) existing.setPrice(request.getPrice());
+        if (request.getStockQuantity() != null) existing.setStockQuantity(request.getStockQuantity());
+        Product updated = productRepository.save(existing);
+        return toDTO(updated);
+    });
+}
+
+public boolean delete(Long id) {
+    if (productRepository.existsById(id)) {
+        productRepository.deleteById(id);
+        return true;
+    }
+    return false;
+}
+
+// ProductController.java
+@PutMapping("/{id}")
+public ResponseEntity<ProductResponseDTO> updateFull(@PathVariable Long id, @RequestBody UpdateProductRequest request) {
+    return productService.updateFull(id, request)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+}
+
+@PatchMapping("/{id}")
+public ResponseEntity<ProductResponseDTO> updatePartial(@PathVariable Long id, @RequestBody UpdateProductRequest request) {
+    return productService.updatePartial(id, request)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+}
+
+@DeleteMapping("/{id}")
+public ResponseEntity<Void> delete(@PathVariable Long id) {
+    if (productService.delete(id)) {
+        return ResponseEntity.noContent().build();
+    }
+    return ResponseEntity.notFound().build();
+}
 ```
 
 **Evidence (screenshot filename, request/response sample, or file reference in this folder):**
-TASK 4 TEST RUNNER START
-Step 1: Testing orphanRemoval on Department -> Employee
-Hibernate: 
-    insert 
-    into
-        departments
-        (name) 
-    values
-        (?)
+PUT /api/products/2
+StatusCode : 200                                                                                                                
+StatusDescription : OK                                                                                                                 
+Content : {"id":2,"name":"Wireless Mouse","sku":"M-01","price":29.99,"stockQuantity":15}
 
-Hibernate: 
-    insert 
-    into
-        employees
-        (department_id, name) 
-    values
-        (?, ?)
+PATCH /api/products/2
+StatusCode        : 200
+StatusDescription : OK
+Content           : {"id":2,"name":"Wireless Mouse","sku":"M-01","price":24.99,"stockQuantity":15}
 
-Hibernate: 
-    insert 
-    into
-        employees
-        (department_id, name) 
-    values
-        (?, ?)
+DELETE /api/products/2
+StatusCode        : 204
+StatusDescription : No Content
+Content           : {}
 
-Hibernate: 
-    delete 
-    from
-        employees 
-    where
-        id=?
-
-Employee removed from collection and orphan deleted successfully
-
-Step 2: Testing Deleting Student without Deleting Shared Course
-Hibernate: 
-    insert 
-    into
-        courses
-        (title) 
-    values
-        (?)
-
-Hibernate: 
-    insert 
-    into
-        students
-        (name) 
-    values
-        (?)
-
-Hibernate: 
-    delete 
-    from
-        students 
-    where
-        id=?
-
-Hibernate: 
-    select
-        count(*) 
-    from
-        courses c1_0 
-    where
-        c1_0.id=?
-
-Student deleted. Does shared Course still exist in DB? true
-TASK 4 TEST RUNNER END
-
-**Reflection question:**
-_What is the difference between `CascadeType.REMOVE` and `orphanRemoval = true`, and in which situation is each appropriate or dangerous?_
-
-Your answer:
-CascadeType.REMOVE triggers a cascading delete when the parent entity itself is deleted. orphanRemoval = true goes further by deleting a child entity if it is disassociated/removed from the parent's collection, even if the parent entity remains alive in the database. orphanRemoval is appropriate for private, parent-child relationships, but dangerous on shared lookup entities, where disassociating or deleting one side should never wipe out shared system records.
+DELETE /api/products/999
+Invoke-WebRequest : The remote server returned an error: (404) Not Found.
 
 ---
 
-## Task 5 — Capstone Milestone 2 — ERD to JPA Entity Model
+## Task 5 — Validation & Global Exception Handling
 
 **Approach / explanation:**
-I translated my Capstone domain into JPA entity classes, mapping the cardinalities, foreign key columns, and owning sides. The domain includes a 1:1 relationship, a 1:N relationship, and an N:M relationship resolved via the `OrderItem` association entity between `CustomerOrder` and `Product`. All relationships default to `FetchType.LAZY` to ensure optimal performance, and cascade types are configured based on entity lifecycle dependencies.
+I implemented jakarta bean validation on the request DTOs and attached `@Valid` to the controller parameters. Additionally, I built a `@RestControllerAdvice` global exception handler to intercept `MethodArgumentNotValidException` and `IllegalArgumentException`. Validation failures yield a structured `400 Bad Request` response mapping invalid fields to error messages, while duplicate SKU checks yield a clean `409 Conflict` HTTP status.
 
-**Code / endpoint(s) used (if applicable):**
+**Code snippet (GlobalExceptionHandler.java):**
 ```java
-// CustomerOrder.java
-@Entity
-@Table(name = "customer_orders")
-public class CustomerOrder {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    private LocalDate orderDate;
-    private String status;
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                errors.put(error.getField(), error.getDefaultMessage()));
+        return ResponseEntity.badRequest().body(errors);
+    }
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
-
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItem> orderItems = new ArrayList<>();
-
-    public void addOrderItem(OrderItem item) {
-        orderItems.add(item);
-        item.setOrder(this);
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        Map<String, String> error = new HashMap<>();
+        if ("SKU_EXISTS".equals(ex.getMessage())) {
+            error.put("error", "Product SKU already exists.");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        }
+        error.put("error", ex.getMessage());
+        return ResponseEntity.badRequest().body(error);
     }
 }
-
-// OrderItem.java
-@Entity
-@Table(name = "order_items")
-public class OrderItem {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    private Integer quantity;
-    private Double price;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
-    private CustomerOrder order;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
-}
 ```
 
 **Evidence (screenshot filename, request/response sample, or file reference in this folder):**
-Hibernate: 
-    create table customer_orders (
-        id bigint not null auto_increment,
-        order_date date,
-        status varchar(255),
-        user_id bigint,
-        primary key (id)
-    ) engine=InnoDB
+Payload validation failure returning 400 Bad Request
+Invoke-WebRequest : The remote server returned an error: (400) Bad Request.
 
-Hibernate: 
-    create table order_items (
-        id bigint not null auto_increment,
-        price float(53),
-        quantity integer,
-        order_id bigint not null,
-        product_id bigint not null,
-        primary key (id)
-    ) engine=InnoDB
-
-Hibernate: 
-    create table products (
-        id bigint not null auto_increment,
-        name varchar(255) not null,
-        price float(53),
-        primary key (id)
-    ) engine=InnoDB
-
-TASK 5 CAPSTONE SMOKE TEST START
-Hibernate: 
-    insert 
-    into
-        user_profiles
-        (bio, phone_number) 
-    values
-        (?, ?)
-
-Hibernate: 
-    insert 
-    into
-        users
-        (profile_id, username) 
-    values
-        (?, ?)
-
-Hibernate: 
-    insert 
-    into
-        products
-        (name, price) 
-    values
-        (?, ?)
-
-Hibernate: 
-    insert 
-    into
-        customer_orders
-        (order_date, status, user_id) 
-    values
-        (?, ?, ?)
-
-Hibernate: 
-    insert 
-    into
-        order_items
-        (order_id, price, product_id, quantity) 
-    values
-        (?, ?, ?, ?)    
-Capstone object graph persisted and read back successfully
-TASK 5 CAPSTONE SMOKE TEST END                    
-
-**Reflection question:**
-_For one relationship in your capstone model, state the cardinality, the owning side, where the FK/join table lives, and why you chose that fetch and cascade setting._
-
-Your answer:
-In the CustomerOrder -> OrderItem relationship, OrderItem is the owning side because it holds the order_id foreign key column in the order_items table. I selected FetchType.LAZY to prevent loading all order line items whenever basic order summary details are queried. I chose cascade = CascadeType.ALL and orphanRemoval = true because line items are privately owned components of a customer order—they should be created, updated, or removed automatically in tandem with their parent order.
+Duplicate SKU check returning 409 Conflict
+Invoke-WebRequest : The remote server returned an error: (409) Conflict.                
 
 ---
 

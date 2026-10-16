@@ -2,7 +2,6 @@ package com.zilpher.webdev2;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.zilpher.webdev2.entity.Course;
@@ -13,7 +12,7 @@ import com.zilpher.webdev2.repository.CourseRepository;
 import com.zilpher.webdev2.repository.DepartmentRepository;
 import com.zilpher.webdev2.repository.StudentRepository;
 
-@Component
+// @Component
 public class Task4TestRunner implements CommandLineRunner {
 
     @Autowired private DepartmentRepository departmentRepository;
