@@ -24,6 +24,7 @@ public class Product {
 
     private BigDecimal price;
     private Integer stockQuantity;
+    private String category;
 
     public Product() {}
 
@@ -49,6 +50,8 @@ public class Product {
         return price; 
     }public Integer getStockQuantity() {
         return stockQuantity;
+    }public String getCategory() {
+        return category;
     }
 
     public void setId(Long id) { 
@@ -61,5 +64,7 @@ public class Product {
         this.price = price; 
     }public void setStockQuantity(Integer stockQuantity) {
         this.stockQuantity = stockQuantity;
+    }public void setCategory(String category) {
+        this.category = category;
     }
 }

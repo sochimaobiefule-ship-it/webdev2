@@ -8,15 +8,17 @@ public class ProductResponseDTO {
     private String sku;
     private BigDecimal price;
     private Integer stockQuantity;
+    private String category;
 
     public ProductResponseDTO() {}
 
-    public ProductResponseDTO(Long id, String name, String sku, BigDecimal price, Integer stockQuantity) {
+    public ProductResponseDTO(Long id, String name, String sku, BigDecimal price, Integer stockQuantity, String category) {
         this.id = id;
         this.name = name;
         this.sku = sku;
         this.price = price;
         this.stockQuantity = stockQuantity;
+        this.category = category;
     }
 
     public Long getId() { 
@@ -29,6 +31,8 @@ public class ProductResponseDTO {
         return price; 
     }public Integer getStockQuantity() { 
         return stockQuantity; 
+    }public String getCategory() {
+        return category;
     }
 
     public void setId(Long id) { 
@@ -41,5 +45,7 @@ public class ProductResponseDTO {
         this.price = price; 
     }public void setStockQuantity(Integer stockQuantity) { 
         this.stockQuantity = stockQuantity; 
+    }public void setCategory(String category) {
+        this.category = category;
     }
 }
