@@ -1,0 +1,125 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "WEBDEV2 Midterm API Collection",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Create Category (201 Created)",
+			"request": {
+				"method": "POST",
+				"header": [{"key": "Content-Type", "value": "application/json"}],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Electronics\",\n  \"description\": \"Gadgets and tech items\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/categories",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "categories"]
+				}
+			}
+		},
+		{
+			"name": "2. Create Category Duplicate Name (409 Conflict)",
+			"request": {
+				"method": "POST",
+				"header": [{"key": "Content-Type", "value": "application/json"}],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Electronics\",\n  \"description\": \"Duplicate category check\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/categories",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "categories"]
+				}
+			}
+		},
+		{
+			"name": "3. Create Product (201 Created)",
+			"request": {
+				"method": "POST",
+				"header": [{"key": "Content-Type", "value": "application/json"}],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Mechanical Keyboard\",\n  \"sku\": \"PROD-101\",\n  \"price\": 89.99,\n  \"stockQuantity\": 25,\n  \"status\": \"ACTIVE\",\n  \"categoryId\": 1\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/products",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "products"]
+				}
+			}
+		},
+		{
+			"name": "4. Create Invalid Product Payload (400 Bad Request)",
+			"request": {
+				"method": "POST",
+				"header": [{"key": "Content-Type", "value": "application/json"}],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"a\",\n  \"sku\": \"invalid_sku_format\",\n  \"price\": 0.50,\n  \"stockQuantity\": -10,\n  \"categoryId\": 1\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/products",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "products"]
+				}
+			}
+		},
+		{
+			"name": "5. Get Nonexistent Product (404 Not Found)",
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "http://localhost:8080/api/products/999",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "products", "999"]
+				}
+			}
+		},
+		{
+			"name": "6. Get Products Paginated & Sorted (200 OK)",
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "http://localhost:8080/api/products?page=0&size=2&sort=name,asc",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "products"],
+					"query": [
+						{"key": "page", "value": "0"},
+						{"key": "size", "value": "2"},
+						{"key": "sort", "value": "name,asc"}
+					]
+				}
+			}
+		},
+		{
+			"name": "7. Delete Product (204 No Content)",
+			"request": {
+				"method": "DELETE",
+				"url": {
+					"raw": "http://localhost:8080/api/products/1",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8080",
+					"path": ["api", "products", "1"]
+				}
+			}
+		}
+	]
+}
