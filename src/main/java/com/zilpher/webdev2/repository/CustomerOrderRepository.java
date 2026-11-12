@@ -4,4 +4,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.zilpher.webdev2.entity.CustomerOrder;
 
-public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Long> {}
+public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Long> {
+    boolean existsByUserId(Long userId);
+}

@@ -1,85 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Catalog — WEBDEV2 Week 13</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 2rem;
-            background-color: #f8f9fa;
-        }
-
-        h1,
-        h2 {
-            color: #333;
-        }
-
-        .status-box {
-            font-weight: bold;
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 4px;
-        }
-
-        .loading {
-            background-color: #e2e3e5;
-            color: #383d41;
-        }
-
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-
-        .empty {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-
-        ul#product-list {
-            list-style-type: none;
-            padding: 0;
-            max-width: 500px;
-        }
-
-        ul#product-list li {
-            background: #fff;
-            padding: 12px;
-            margin-bottom: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        ul#product-list li:hover {
-            background-color: #e9ecef;
-        }
-
-        .detail-panel {
-            margin-top: 20px;
-            padding: 15px;
-            background: #fff;
-            border: 1px solid #007bff;
-            border-radius: 4px;
-            max-width: 500px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WEBDEV2 Week 14 — Full CRUD & Atomic Order Workflow</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-    <h1>Product Management System</h1>
-    <div id="status" class="status-box" style="display: none;"></div>
+  <header class="topbar">
+    <h1>Inventory &amp; Order Management (Week 14)</h1>
+    <p class="subtitle">Full Browser CRUD (Products &amp; Users) + Atomic Order Transaction</p>
+  </header>
 
-    <h2>Products List</h2>
-    <ul id="product-list"></ul>
+  <main class="container">
+    <div id="status-banner" class="banner hidden" role="status"></div>
 
-    <div id="detail-card" class="detail-panel" style="display: none;">
-        <h2>Selected Product Details</h2>
-        <div id="detail-content"></div>
-    </div>
-    <script src="app.js"></script>
+    <section class="card workflow-card">
+      <h2>1. Place Customer Order (Atomic Business Workflow)</h2>
+      <p class="hint">Calls <code>POST /api/orders</code>: locks product stock, deducts quantity, and records the order in one transaction.</p>
+
+      <form id="order-form" novalidate>
+        <div class="form-grid">
+          <div class="field">
+            <label for="order-user-select">Customer (User) *</label>
+            <select id="order-user-select" required>
+              <option value="">-- Loading users... --</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="order-product-select">Product *</label>
+            <select id="order-product-select" required>
+              <option value="">-- Loading products... --</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="order-quantity">Quantity *</label>
+            <input type="number" id="order-quantity" min="1" step="1" value="1" required />
+          </div>
+        </div>
+
+        <div class="checkbox-row">
+          <input type="checkbox" id="order-simulate-failure" />
+          <label for="order-simulate-failure">Simulate post-write failure after stock deduction (verify DB rollback)</label>
+        </div>
+
+        <div class="actions">
+          <button type="submit" id="order-submit-btn" class="btn primary">Place Order</button>
+        </div>
+      </form>
+
+      <h3>Recent Confirmed Orders</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Product</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Total (Server)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody">
+            <tr><td colspan="8">Loading orders...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-header">
+        <h2 id="product-form-title">2. Products — Create New Product</h2>
+        <div class="filter-bar">
+          <label for="category-filter">Filter Category:</label>
+          <input type="text" id="category-filter" placeholder="e.g. Electronics" />
+          <button type="button" id="apply-filter-btn" class="btn">Filter</button>
+          <button type="button" id="clear-filter-btn" class="btn secondary">Reset</button>
+        </div>
+      </div>
+
+      <form id="product-form" novalidate>
+        <input type="hidden" id="product-id" />
+        <div class="form-grid">
+          <div class="field">
+            <label for="product-name">Product Name *</label>
+            <input type="text" id="product-name" maxlength="100" required />
+          </div>
+
+          <div class="field">
+            <label for="product-sku">SKU *</label>
+            <input type="text" id="product-sku" maxlength="50" placeholder="e.g. SKU-1001" required />
+          </div>
+
+          <div class="field">
+            <label for="product-category">Category *</label>
+            <input type="text" id="product-category" maxlength="50" placeholder="e.g. Electronics" required />
+          </div>
+
+          <div class="field">
+            <label for="product-price">Price *</label>
+            <input type="number" id="product-price" min="0.01" step="0.01" required />
+          </div>
+
+          <div class="field">
+            <label for="product-stock">Stock Quantity *</label>
+            <input type="number" id="product-stock" min="0" step="1" required />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" id="product-submit-btn" class="btn primary">Create Product</button>
+          <button type="button" id="product-cancel-btn" class="btn secondary hidden">Cancel Edit</button>
+        </div>
+      </form>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>SKU</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="products-tbody">
+            <tr><td colspan="7">Loading products...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <button type="button" id="prev-page-btn" class="btn secondary">Previous</button>
+        <span id="page-info">Page 1 of 1</span>
+        <button type="button" id="next-page-btn" class="btn secondary">Next</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 id="user-form-title">3. Users — Create New User</h2>
+
+      <form id="user-form" novalidate>
+        <input type="hidden" id="user-id" />
+        <div class="form-grid">
+          <div class="field">
+            <label for="user-username">Username *</label>
+            <input type="text" id="user-username" minlength="3" maxlength="50" required />
+          </div>
+
+          <div class="field">
+            <label for="user-email">Email *</label>
+            <input type="email" id="user-email" required />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" id="user-submit-btn" class="btn primary">Create User</button>
+          <button type="button" id="user-cancel-btn" class="btn secondary hidden">Cancel Edit</button>
+        </div>
+      </form>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody">
+            <tr><td colspan="4">Loading users...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="app.js"></script>
 </body>
 </html>

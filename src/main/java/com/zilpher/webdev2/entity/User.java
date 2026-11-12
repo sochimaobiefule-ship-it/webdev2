@@ -13,7 +13,6 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "users")
 public class User {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -24,6 +23,9 @@ public class User {
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "profile_id", referencedColumnName = "id")
     private UserProfile profile;
+
+    @Column(unique = true)
+    private String email;
 
     public User() {}
 
@@ -37,6 +39,8 @@ public class User {
         return username; 
     }public UserProfile getProfile() { 
         return profile; 
+    }public String getEmail() {
+        return email;
     }
 
     public void setId(Long id) { 
@@ -48,5 +52,7 @@ public class User {
         if (profile != null) {
             profile.setUser(this);
         }
+    }public void setEmail(String email) {
+        this.email = email;
     }
 }

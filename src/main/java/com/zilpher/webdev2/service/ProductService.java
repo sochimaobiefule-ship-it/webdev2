@@ -12,15 +12,19 @@ import com.zilpher.webdev2.dto.CreateProductRequest;
 import com.zilpher.webdev2.dto.ProductResponseDTO;
 import com.zilpher.webdev2.dto.UpdateProductRequest;
 import com.zilpher.webdev2.entity.Product;
+import com.zilpher.webdev2.exception.ConflictException;
 import com.zilpher.webdev2.exception.ResourceNotFoundException;
+import com.zilpher.webdev2.repository.OrderItemRepository;
 import com.zilpher.webdev2.repository.ProductRepository;
 
 @Service
 public class ProductService {
     private final ProductRepository productRepository;
+    private final OrderItemRepository orderItemRepository;
 
-    public ProductService(ProductRepository productRepository) {
+    public ProductService(ProductRepository productRepository, OrderItemRepository orderItemRepository) {
         this.productRepository = productRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     public List<ProductResponseDTO> findAll() {
@@ -38,11 +42,23 @@ public class ProductService {
         return productRepository.findById(id).map(existing -> {
             existing.setName(request.getName());
             existing.setSku(request.getSku());
+            existing.setCategory(request.getCategory());
             existing.setPrice(request.getPrice());
             existing.setStockQuantity(request.getStockQuantity());
             Product updated = productRepository.save(existing);
             return toDTO(updated);
         });
+    }
+
+    public void deleteById(Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Product not found with id: " + id);
+        }
+        if (orderItemRepository.existsByProductId(id)) {
+            throw new ConflictException(
+                    "Cannot delete product ID " + id + " because it is referenced in existing customer orders.");
+        }
+        productRepository.deleteById(id);
     }
 
     public Optional<ProductResponseDTO> updatePartial(Long id, UpdateProductRequest request) {
@@ -79,8 +95,7 @@ public class ProductService {
                 entity.getSku(),
                 entity.getPrice(),
                 entity.getStockQuantity(),
-                entity.getCategory()
-        );
+                entity.getCategory());
     }
 
     public ProductResponseDTO getById(Long id) {
@@ -96,7 +111,7 @@ public class ProductService {
         Product entity = new Product();
         entity.setName(request.getName());
         entity.setSku(request.getSku());
-        entity.setCategory(request.getCategory()); 
+        entity.setCategory(request.getCategory());
         entity.setPrice(request.getPrice());
         entity.setStockQuantity(request.getStockQuantity());
 
@@ -111,8 +126,7 @@ public class ProductService {
                 product.getSku(),
                 product.getPrice(),
                 product.getStockQuantity(),
-                product.getCategory()
-        );
+                product.getCategory());
     }
 
     public Page<ProductResponseDTO> getAll(String category, Pageable pageable) {
