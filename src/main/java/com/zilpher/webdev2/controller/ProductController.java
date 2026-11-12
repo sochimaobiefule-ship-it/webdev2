@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.zilpher.webdev2.dto.CreateProductRequest;
 import com.zilpher.webdev2.dto.ProductResponseDTO;
 import com.zilpher.webdev2.dto.UpdateProductRequest;
+import com.zilpher.webdev2.exception.ResourceNotFoundException;
 import com.zilpher.webdev2.service.ProductService;
 
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
+
     private final ProductService productService;
 
     public ProductController(ProductService productService) {
@@ -35,10 +37,10 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProductResponseDTO> update(
-            @PathVariable Long id,
-            @Valid @RequestBody UpdateProductRequest request) {
-        return ResponseEntity.ok(productService.update(id, request));
+    public ResponseEntity<ProductResponseDTO> update(@PathVariable Long id, @Valid @RequestBody UpdateProductRequest request) {
+        return productService.updateFull(id, request)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
     }
 
     @GetMapping("/{id}")
@@ -48,7 +50,9 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<ProductResponseDTO>> getAll(@RequestParam(required = false) String category, Pageable pageable) {
+    public ResponseEntity<Page<ProductResponseDTO>> getAll(
+            @RequestParam(required = false) String category,
+            Pageable pageable) {
         return ResponseEntity.ok(productService.getAll(category, pageable));
     }
 }
