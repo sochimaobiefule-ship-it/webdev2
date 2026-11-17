@@ -1,4 +1,15 @@
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
+
+let authState = {
+    authenticated: false,
+    username: null,
+    role: null
+};
+
+let csrfState = {
+    headerName: "X-XSRF-TOKEN",
+    token: null
+};
 
 let productState = {
     page: 0,
@@ -8,10 +19,37 @@ let productState = {
     currentItemsCount: 0
 };
 
-async function request(path, options = {}) {
+async function refreshCsrfToken() {
+    const data = await fetch(`${API_BASE}/api/auth/csrf`, {
+        method: "GET",
+        credentials: "same-origin"
+    }).then(r => r.json());
+
+    csrfState.headerName = data.headerName || "X-XSRF-TOKEN";
+    csrfState.token = data.token;
+    return csrfState;
+}
+
+async function request(path, options = {}, internalAuthCall = false) {
+    const method = (options.method || "GET").toUpperCase();
+    const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+
+    if (isMutating && !csrfState.token) {
+        await refreshCsrfToken();
+    }
+
+    const headers = { ...(options.headers || {}) };
+    if (isMutating && csrfState.token) {
+        headers[csrfState.headerName] = csrfState.token;
+    }
+
     let response;
     try {
-        response = await fetch(`${API_BASE}${path}`, options);
+        response = await fetch(`${API_BASE}${path}`, {
+            ...options,
+            credentials: "same-origin",
+            headers
+        });
     } catch (networkErr) {
         const err = new Error("Network error: Unable to reach backend server. Ensure Spring Boot is running and retry.");
         err.status = 0;
@@ -26,6 +64,10 @@ async function request(path, options = {}) {
             : await response.text();
 
     if (!response.ok) {
+        if (response.status === 401 && !internalAuthCall) {
+            setUnauthenticatedUI("Your session has expired or you are signed out. Please sign in to continue.");
+        }
+
         let message = `Request failed (${response.status})`;
         if (typeof body === "object" && body !== null) {
             message = body.message || message;
@@ -53,6 +95,129 @@ function clearBanner() {
     bannerEl.textContent = "";
     bannerEl.className = "banner hidden";
 }
+
+function isManager() {
+    return authState.authenticated && authState.role === "MANAGER";
+}
+
+function applyRoleUI() {
+    const loginFormEl = document.getElementById("login-form");
+    const sessionInfoEl = document.getElementById("session-info");
+    const currentUserLabel = document.getElementById("current-user-label");
+    const authNoticeCard = document.getElementById("auth-notice-card");
+    const appWorkspace = document.getElementById("app-workspace");
+
+    if (!authState.authenticated) {
+        loginFormEl.classList.remove("hidden");
+        sessionInfoEl.classList.add("hidden");
+        authNoticeCard.classList.remove("hidden");
+        appWorkspace.classList.add("hidden");
+        return;
+    }
+
+    loginFormEl.classList.add("hidden");
+    sessionInfoEl.classList.remove("hidden");
+    authNoticeCard.classList.add("hidden");
+    appWorkspace.classList.remove("hidden");
+
+    currentUserLabel.textContent = `Signed in as ${authState.username} (${authState.role})`;
+
+    const managerAllowed = isManager();
+    document.querySelectorAll(".manager-only").forEach(el => {
+        if (managerAllowed) {
+            el.classList.remove("hidden");
+        } else {
+            el.classList.add("hidden");
+        }
+    });
+
+    productFormTitle.textContent = managerAllowed
+        ? "2. Products — Create New Product"
+        : "2. Products — Catalog (Read-Only)";
+    userFormTitle.textContent = managerAllowed
+        ? "3. Users — Create New User"
+        : "3. Users — Directory (Read-Only)";
+}
+
+function setUnauthenticatedUI(bannerMessage = null) {
+    authState = { authenticated: false, username: null, role: null };
+    applyRoleUI();
+    if (bannerMessage) {
+        showBanner(bannerMessage, "error");
+    }
+}
+
+async function loadAllData() {
+    await Promise.all([
+        loadProducts(),
+        loadUsers(),
+        loadOrders(),
+        populateRelationshipDropdowns()
+    ]);
+}
+
+const loginForm = document.getElementById("login-form");
+const loginUsernameInput = document.getElementById("login-username");
+const loginPasswordInput = document.getElementById("login-password");
+const loginBtn = document.getElementById("login-btn");
+const logoutBtn = document.getElementById("logout-btn");
+
+loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearBanner();
+
+    const username = loginUsernameInput.value.trim();
+    const password = loginPasswordInput.value;
+
+    if (!username || !password) {
+        showBanner("Please enter both username and password.", "error");
+        return;
+    }
+
+    loginBtn.disabled = true;
+    try {
+        await refreshCsrfToken();
+        const me = await request("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        }, true);
+
+        await refreshCsrfToken();
+
+        authState = {
+            authenticated: true,
+            username: me.username,
+            role: me.role
+        };
+        loginPasswordInput.value = "";
+        applyRoleUI();
+        showBanner(`Welcome, ${me.username}! Active role: ${me.role}.`, "success");
+        await loadAllData();
+    } catch (err) {
+        loginPasswordInput.value = "";
+        showBanner(err.message, "error");
+    } finally {
+        loginBtn.disabled = false;
+    }
+});
+
+logoutBtn.addEventListener("click", async () => {
+    clearBanner();
+    logoutBtn.disabled = true;
+    try {
+        await request("/api/auth/logout", { method: "POST" }, true);
+        await refreshCsrfToken();
+        resetProductForm();
+        resetUserForm();
+        setUnauthenticatedUI(null);
+        showBanner("Signed out successfully. Session invalidated.", "success");
+    } catch (err) {
+        showBanner(err.message, "error");
+    } finally {
+        logoutBtn.disabled = false;
+    }
+});
 
 const productForm = document.getElementById("product-form");
 const productIdInput = document.getElementById("product-id");
@@ -116,6 +281,8 @@ function renderProductsTable(products) {
         return;
     }
 
+    const managerAllowed = isManager();
+
     products.forEach(p => {
         const tr = document.createElement("tr");
 
@@ -135,22 +302,25 @@ function renderProductsTable(products) {
         });
 
         const actionTd = document.createElement("td");
+        if (managerAllowed) {
+            const editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "btn secondary small";
+            editBtn.textContent = "Edit";
+            editBtn.addEventListener("click", () => startEditProduct(p));
 
-        const editBtn = document.createElement("button");
-        editBtn.type = "button";
-        editBtn.className = "btn secondary small";
-        editBtn.textContent = "Edit";
-        editBtn.addEventListener("click", () => startEditProduct(p));
+            const delBtn = document.createElement("button");
+            delBtn.type = "button";
+            delBtn.className = "btn danger small";
+            delBtn.style.marginLeft = "0.4rem";
+            delBtn.textContent = "Delete";
+            delBtn.addEventListener("click", () => handleDeleteProduct(p));
 
-        const delBtn = document.createElement("button");
-        delBtn.type = "button";
-        delBtn.className = "btn danger small";
-        delBtn.style.marginLeft = "0.4rem";
-        delBtn.textContent = "Delete";
-        delBtn.addEventListener("click", () => handleDeleteProduct(p));
-
-        actionTd.appendChild(editBtn);
-        actionTd.appendChild(delBtn);
+            actionTd.appendChild(editBtn);
+            actionTd.appendChild(delBtn);
+        } else {
+            actionTd.textContent = "Read-only";
+        }
         tr.appendChild(actionTd);
 
         productsTbody.appendChild(tr);
@@ -174,7 +344,9 @@ function startEditProduct(product) {
 function resetProductForm() {
     productForm.reset();
     productIdInput.value = "";
-    productFormTitle.textContent = "2. Products — Create New Product";
+    productFormTitle.textContent = isManager()
+        ? "2. Products — Create New Product"
+        : "2. Products — Catalog (Read-Only)";
     productSubmitBtn.textContent = "Create Product";
     productCancelBtn.classList.add("hidden");
 }
@@ -295,7 +467,7 @@ async function loadUsers() {
         usersTbody.innerHTML = "";
         const tr = document.createElement("tr");
         const td = document.createElement("td");
-        td.colSpan = 4;
+        td.colSpan = 5;
         td.textContent = `Could not load users: ${err.message}`;
         tr.appendChild(td);
         usersTbody.appendChild(tr);
@@ -308,12 +480,14 @@ function renderUsersTable(users) {
     if (users.length === 0) {
         const tr = document.createElement("tr");
         const td = document.createElement("td");
-        td.colSpan = 4;
+        td.colSpan = 5;
         td.textContent = "No users found.";
         tr.appendChild(td);
         usersTbody.appendChild(tr);
         return;
     }
+
+    const managerAllowed = isManager();
 
     users.forEach(u => {
         const tr = document.createElement("tr");
@@ -324,23 +498,34 @@ function renderUsersTable(users) {
             tr.appendChild(td);
         });
 
+        const roleTd = document.createElement("td");
+        const roleBadge = document.createElement("span");
+        const roleText = u.role || "READER";
+        roleBadge.className = `role-pill ${roleText === "MANAGER" ? "manager" : ""}`;
+        roleBadge.textContent = roleText;
+        roleTd.appendChild(roleBadge);
+        tr.appendChild(roleTd);
+
         const actionTd = document.createElement("td");
+        if (managerAllowed) {
+            const editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "btn secondary small";
+            editBtn.textContent = "Edit";
+            editBtn.addEventListener("click", () => startEditUser(u));
 
-        const editBtn = document.createElement("button");
-        editBtn.type = "button";
-        editBtn.className = "btn secondary small";
-        editBtn.textContent = "Edit";
-        editBtn.addEventListener("click", () => startEditUser(u));
+            const delBtn = document.createElement("button");
+            delBtn.type = "button";
+            delBtn.className = "btn danger small";
+            delBtn.style.marginLeft = "0.4rem";
+            delBtn.textContent = "Delete";
+            delBtn.addEventListener("click", () => handleDeleteUser(u));
 
-        const delBtn = document.createElement("button");
-        delBtn.type = "button";
-        delBtn.className = "btn danger small";
-        delBtn.style.marginLeft = "0.4rem";
-        delBtn.textContent = "Delete";
-        delBtn.addEventListener("click", () => handleDeleteUser(u));
-
-        actionTd.appendChild(editBtn);
-        actionTd.appendChild(delBtn);
+            actionTd.appendChild(editBtn);
+            actionTd.appendChild(delBtn);
+        } else {
+            actionTd.textContent = "Read-only";
+        }
         tr.appendChild(actionTd);
 
         usersTbody.appendChild(tr);
@@ -361,7 +546,9 @@ function startEditUser(user) {
 function resetUserForm() {
     userForm.reset();
     userIdInput.value = "";
-    userFormTitle.textContent = "3. Users — Create New User";
+    userFormTitle.textContent = isManager()
+        ? "3. Users — Create New User"
+        : "3. Users — Directory (Read-Only)";
     userSubmitBtn.textContent = "Create User";
     userCancelBtn.classList.add("hidden");
 }
@@ -568,10 +755,17 @@ orderForm.addEventListener("submit", async (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
-    await Promise.all([
-        loadProducts(),
-        loadUsers(),
-        loadOrders(),
-        populateRelationshipDropdowns()
-    ]);
+    try {
+        await refreshCsrfToken();
+        const me = await request("/api/auth/me", { method: "GET" }, true);
+        authState = {
+            authenticated: true,
+            username: me.username,
+            role: me.role
+        };
+        applyRoleUI();
+        await loadAllData();
+    } catch (_) {
+        setUnauthenticatedUI(null);
+    }
 });

@@ -1,5 +1,6 @@
 package com.zilpher.webdev2.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,26 +28,37 @@ public class User {
     @Column(unique = true)
     private String email;
 
+    @JsonIgnore
+    @Column(name = "password_hash")
+    private String passwordHash;
+
+    @Column(nullable = false, length = 32)
+    private String role = "READER";
+
     public User() {}
 
     public User(String username) {
         this.username = username;
     }
 
-    public Long getId() { 
-        return id; 
-    }public String getUsername() { 
-        return username; 
-    }public UserProfile getProfile() { 
-        return profile; 
+    public Long getId() {
+        return id;
+    }public String getUsername() {
+        return username;
+    }public UserProfile getProfile() {
+        return profile;
     }public String getEmail() {
         return email;
+    }public String getPasswordHash() {
+        return passwordHash;
+    }public String getRole() {
+        return role;
     }
 
-    public void setId(Long id) { 
-        this.id = id; 
-    }public void setUsername(String username) { 
-        this.username = username; 
+    public void setId(Long id) {
+        this.id = id;
+    }public void setUsername(String username) {
+        this.username = username;
     }public void setProfile(UserProfile profile) {
         this.profile = profile;
         if (profile != null) {
@@ -54,5 +66,9 @@ public class User {
         }
     }public void setEmail(String email) {
         this.email = email;
+    }public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }public void setRole(String role) {
+        this.role = (role == null || role.isBlank()) ? "READER" : role;
     }
 }
