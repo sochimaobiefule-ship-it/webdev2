@@ -1,4 +1,4 @@
-package com.zilpher.webdev2.service;
+﻿package com.zilpher.webdev2.service;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -79,6 +79,6 @@ public class UserService {
     }
 
     private UserResponseDTO toDTO(User user) {
-        return new UserResponseDTO(user.getId(), user.getUsername(), user.getEmail());
+        return new UserResponseDTO(user.getId(), user.getUsername(), user.getEmail(), user.getRole());
     }
 }

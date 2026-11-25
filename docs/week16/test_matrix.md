@@ -1,0 +1,25 @@
+# Week 16 — Test Matrix (`test_matrix.md`)
+
+**Date:** 25/11/2026  
+**Coverage:** 3 Service cases, 5 API/Security cases, 2 MySQL transaction cases, and 8 Browser UAT cases (plus `DEF-001` regression check). Shared SQL/DB artifacts are kept in `INFOMAN1 week16/`.
+
+| Req / Scope | Test ID & Layer | Expected Result | Actual Result | Evidence |
+| :--- | :--- | :--- | :--- | :--- |
+| User DTO & service mapping (`DEF-001`) | `SRV-01` (Service) | `UserResponseDTO` and `UserService.toDTO` include user `role` (`MANAGER` / `READER`) | `role` added to `UserResponseDTO` and mapped in `UserService`; service tests pass | `UserResponseDTO.java`, `UserService.java`, `Week16ServiceUnitTests` |
+| Business validation & error handling | `SRV-02` (Service) | Duplicate/invalid fields or missing entities throw clean domain/validation exceptions | Validation and conflict rules enforced cleanly in service unit tests | `Week16ServiceUnitTests` |
+| Referential conflict check on delete | `SRV-03` (Service) | Deleting a user or product with dependent order history is blocked with a conflict error | Dependent records rejected before deletion in service tests | `Week16ServiceUnitTests` |
+| Unauthenticated request blocking | `SEC-01` (API/Security) | Anonymous requests to protected endpoints are rejected (`401` / `403`) | Unauthenticated requests blocked by Spring Security filter chain | `Week16ApiSecurityTests` |
+| `READER` role write restriction | `SEC-02` (API/Security) | `READER` user cannot create, update, or delete protected resources (`403 Forbidden`) | `READER` mutations denied with `403` in security tests | `Week16ApiSecurityTests` |
+| `MANAGER` role CRUD permission | `SEC-03` (API/Security) | `MANAGER` user can perform authorized create, read, update, and delete operations | `MANAGER` operations authorized as expected | `Week16ApiSecurityTests` |
+| CSRF token enforcement | `SEC-04` (API/Security) | State-changing requests without a valid CSRF token are rejected | Missing/invalid CSRF requests rejected by `CsrfFilter` | `Week16ApiSecurityTests` |
+| Session login & logout lifecycle | `SEC-05` (API/Security) | Valid credentials establish session; logout invalidates session | Session authentication and invalidation verified in security tests | `Week16ApiSecurityTests` |
+| Atomic order commit & stock deduction | `DB-01` (MySQL) | Order, order item, and product stock deduction commit together in MySQL | Order persisted and stock decremented on `webdev2_week16_test` (`2/2` DB tests pass) | `Week16MySqlTransactionTests`, `INFOMAN1 week16/` |
+| Post-write failure rollback | `DB-02` (MySQL) | Simulated post-write failure rolls back stock deduction and order changes | Transaction rolled back cleanly; stock and order counts unchanged | `Week16MySqlTransactionTests`, `INFOMAN1 week16/` |
+| Manager sign-in & workspace load (`UAT-01`) | `UAT-01` (Browser) | `manager_demo` logs in with `MANAGER` role and CRUD sections visible | Signed in as `manager_demo`; order, product, and user forms visible | `evidence/uat-01-manager-login-session.png` |
+| Category filter, reset & pagination (`UAT-02`) | `UAT-02` (Browser) | Filtering `Electronics` narrows rows; Reset and Next/Previous work cleanly | Filter, reset, and pagination (`Page 1 of 2`) worked as expected | `evidence/uat-02-filter-pagination.png` |
+| Create product & reload persistence (`UAT-03`) | `UAT-03` (Browser) | Creating `UAT Webcam` (`UAT-16-01`, `$45.00`, stock `10`) persists after `F5` | Product created and remained visible after full page reload | `evidence/uat-03-create-product.png` |
+| Update product & reload persistence (`UAT-04`) | `UAT-04` (Browser) | Editing row `14` (`UAT Webcam`) to `$49.50` and stock `16` persists after `F5` | Updated price and stock remained after full page reload | `evidence/uat-04-update-product.png` |
+| Delete conflict vs. delete success (`UAT-05`) | `UAT-05` (Browser) | Order-referenced `Laptop` (ID `1`) shows conflict error; unreferenced `UAT Webcam` deletes | `Laptop` blocked with `409` alert; `UAT Webcam` deleted and stayed gone after `F5` | `evidence/uat-05-delete-conflict.png`, `evidence/uat-05-delete-success.png` |
+| Order form validation (`UAT-06`) | `UAT-06` (Browser) | Submitting incomplete/invalid order shows clear error banner, no stack trace | Clean error banner displayed without exposing backend stack trace | `evidence/uat-06-validation-error.png` |
+| Read-only `READER` UI (`UAT-07`) | `UAT-07` (Browser) | `reader_demo` (`READER`) sees read-only catalog/directory without CRUD forms | Read-only mode active after seeding `APP_SEED_READER_PASSWORD` | `evidence/uat-07-reader-readonly.png` |
+| Order flow, `375x812` & keyboard (`UAT-08`) | `UAT-08` (Browser) | Order commits and stock drops by `1` after `F5`; `375x812` view & keyboard work | Order ID `4` confirmed, stock `25 -> 24`, mobile layout & sign-out clean | `evidence/uat-08-order-transaction.png`, `evidence/uat-08-mobile-keyboard.png` |
